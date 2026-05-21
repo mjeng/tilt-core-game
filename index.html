@@ -3,429 +3,227 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Tilt Core Game</title>
+  <title>Core Arcade</title>
   <style>
-    :root {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #f8fafc;
-      background: #020617;
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: radial-gradient(circle at top, #1e293b 0%, #020617 58%);
-    }
-
-    body {
-      display: grid;
-      place-items: center;
-      touch-action: none;
-      user-select: none;
-    }
-
-    #gameWrap {
-      position: relative;
-      width: min(100vw, 520px);
-      height: 100vh;
-      max-height: 900px;
-      overflow: hidden;
-      border-inline: 1px solid rgba(148, 163, 184, 0.18);
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    .hud {
-      position: absolute;
-      inset: env(safe-area-inset-top) 0 auto 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 16px;
-      pointer-events: none;
-      font-weight: 700;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
-
-    .metric {
-      display: grid;
-      gap: 2px;
-    }
-
-    .label {
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #94a3b8;
-    }
-
-    .value {
-      font-size: 24px;
-      line-height: 1;
-    }
-
-    #overlay {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      background: rgba(2, 6, 23, 0.72);
-      backdrop-filter: blur(12px);
-    }
-
-    .panel {
-      width: min(100%, 420px);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: 28px;
-      padding: 24px;
-      background: rgba(15, 23, 42, 0.86);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
-      text-align: center;
-    }
-
-    h1 {
-      margin: 0 0 10px;
-      font-size: 32px;
-      letter-spacing: -0.04em;
-    }
-
-    p {
-      margin: 0 0 18px;
-      color: #cbd5e1;
-      line-height: 1.45;
-    }
-
-    button {
-      width: 100%;
-      border: 0;
-      border-radius: 18px;
-      padding: 15px 18px;
-      font: inherit;
-      font-weight: 800;
-      color: #020617;
-      background: #f8fafc;
-      cursor: pointer;
-    }
-
-    .hint {
-      margin-top: 14px;
-      font-size: 13px;
-      color: #94a3b8;
-    }
-
-    #status {
-      min-height: 18px;
-      margin-top: 12px;
-      font-size: 13px;
-      color: #fbbf24;
-    }
+    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #f8fafc; background: #020617; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: radial-gradient(circle at top, #1e293b 0%, #020617 60%); }
+    body { display: grid; place-items: center; touch-action: none; user-select: none; }
+    #wrap { position: relative; width: min(100vw, 540px); height: 100vh; max-height: 920px; overflow: hidden; border-inline: 1px solid rgba(148,163,184,.18); background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.98)); }
+    canvas { width: 100%; height: 100%; display: block; }
+    .screen { position: absolute; inset: 0; display: grid; place-items: center; padding: 22px; background: rgba(2,6,23,.76); backdrop-filter: blur(12px); }
+    .hidden { display: none !important; }
+    .panel { width: min(100%, 440px); border: 1px solid rgba(148,163,184,.24); border-radius: 28px; padding: 22px; background: rgba(15,23,42,.9); box-shadow: 0 24px 80px rgba(0,0,0,.55); text-align: center; }
+    h1 { margin: 0 0 10px; font-size: 34px; letter-spacing: -.05em; }
+    h2 { margin: 0 0 10px; font-size: 28px; letter-spacing: -.04em; }
+    p { margin: 0 0 14px; color: #cbd5e1; line-height: 1.45; }
+    button { width: 100%; border: 0; border-radius: 18px; padding: 15px 16px; margin-top: 10px; font: inherit; font-weight: 900; color: #020617; background: #f8fafc; cursor: pointer; }
+    .secondary { background: #334155; color: #f8fafc; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hint, #status { margin-top: 12px; min-height: 18px; font-size: 13px; color: #94a3b8; line-height: 1.4; }
+    #status { color: #fbbf24; }
+    .hud { position: absolute; inset: env(safe-area-inset-top) 0 auto 0; display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; pointer-events: none; font-weight: 850; text-shadow: 0 2px 8px rgba(0,0,0,.55); }
+    .metric { display: grid; gap: 2px; }
+    .metric:nth-child(2) { text-align: center; }
+    .metric:nth-child(3) { text-align: right; }
+    .label { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: #94a3b8; }
+    .value { font-size: 22px; line-height: 1; }
+    #backBtn { position: absolute; left: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); width: auto; padding: 10px 13px; border-radius: 14px; background: rgba(51,65,85,.88); color: #f8fafc; z-index: 4; }
   </style>
 </head>
 <body>
-  <main id="gameWrap">
+  <main id="wrap">
     <canvas id="game"></canvas>
 
-    <div class="hud">
-      <div class="metric">
-        <span class="label">Score</span>
-        <span class="value" id="score">0</span>
-      </div>
-      <div class="metric" style="text-align: right;">
-        <span class="label">Time</span>
-        <span class="value" id="time">30.0</span>
-      </div>
+    <div class="hud hidden" id="hud">
+      <div class="metric"><span class="label" id="leftLabel">Score</span><span class="value" id="score">0</span></div>
+      <div class="metric"><span class="label" id="midLabel">Mode</span><span class="value" id="middle">--</span></div>
+      <div class="metric"><span class="label">Time</span><span class="value" id="time">0</span></div>
     </div>
 
-    <section id="overlay">
+    <button id="backBtn" class="hidden">Menu</button>
+
+    <section id="menu" class="screen">
       <div class="panel">
-        <h1>Tilt Core</h1>
-        <p>Tilt your phone to keep the ball on target. Hold the center ring to score faster.</p>
+        <h1>Core Arcade</h1>
+        <p>Choose a phone-controlled core game. Works as a single static GitHub Pages file.</p>
+        <button id="chooseTilt">Tilt Core</button>
+        <button id="chooseSword">Sword Roller</button>
+        <div class="hint">Tilt Core uses orientation. Sword Roller ignores tilt and uses screen-plane motion from DeviceMotion.</div>
+      </div>
+    </section>
+
+    <section id="start" class="screen hidden">
+      <div class="panel">
+        <h2 id="gameTitle">Game</h2>
+        <p id="gameDesc"></p>
         <button id="startBtn">Start Game</button>
-        <div class="hint">Desktop test: use arrow keys or WASD.</div>
+        <div class="row hidden" id="axisControls">
+          <button id="flipForward" class="secondary" type="button">Flip Forward</button>
+          <button id="flipSide" class="secondary" type="button">Flip Side</button>
+        </div>
+        <button id="menuBtn" class="secondary" type="button">Back to Menu</button>
+        <div class="hint" id="controlsHint"></div>
         <div id="status"></div>
       </div>
     </section>
   </main>
 
   <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
-    const overlay = document.getElementById("overlay");
-    const startBtn = document.getElementById("startBtn");
-    const statusEl = document.getElementById("status");
-    const scoreEl = document.getElementById("score");
-    const timeEl = document.getElementById("time");
-
-    const GAME_SECONDS = 30;
+    const canvas = document.getElementById("game"), ctx = canvas.getContext("2d");
+    const menu = document.getElementById("menu"), start = document.getElementById("start"), hud = document.getElementById("hud");
+    const scoreEl = document.getElementById("score"), middleEl = document.getElementById("middle"), timeEl = document.getElementById("time");
+    const leftLabel = document.getElementById("leftLabel"), midLabel = document.getElementById("midLabel"), statusEl = document.getElementById("status");
+    const gameTitle = document.getElementById("gameTitle"), gameDesc = document.getElementById("gameDesc"), controlsHint = document.getElementById("controlsHint");
+    const axisControls = document.getElementById("axisControls"), backBtn = document.getElementById("backBtn");
     const keys = new Set();
 
-    let width = 0;
-    let height = 0;
-    let dpr = 1;
-    let running = false;
-    let score = 0;
-    let timeLeft = GAME_SECONDS;
-    let lastTime = 0;
-    let target = { x: 0, y: 0, r: 54 };
-    let ball = { x: 0, y: 0, vx: 0, vy: 0, r: 18 };
-    let tilt = { x: 0, y: 0 };
-    let usingMotion = false;
+    let W=0,H=0,DPR=1, mode=null, running=false, last=0, raf=0;
+    let score=0, timeLeft=0, health=100, particles=[];
 
-    function resize() {
-      const rect = canvas.getBoundingClientRect();
-      dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-      width = rect.width;
-      height = rect.height;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      target.x = width / 2;
-      target.y = height / 2;
-      if (!running) resetBall();
+    function resize(){
+      const r=canvas.getBoundingClientRect(); DPR=Math.max(1,Math.min(3,devicePixelRatio||1)); W=r.width; H=r.height;
+      canvas.width=Math.floor(W*DPR); canvas.height=Math.floor(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0); draw();
+    }
+    window.addEventListener("resize",resize); resize();
+    window.addEventListener("keydown",e=>keys.add(e.key)); window.addEventListener("keyup",e=>keys.delete(e.key));
+
+    document.getElementById("chooseTilt").onclick=()=>selectGame("tilt");
+    document.getElementById("chooseSword").onclick=()=>selectGame("sword");
+    document.getElementById("menuBtn").onclick=showMenu;
+    backBtn.onclick=showMenu;
+    document.getElementById("startBtn").onclick=()=>startGame();
+
+    let forwardSign=1, sideSign=1;
+    document.getElementById("flipForward").onclick=()=>{ forwardSign*=-1; statusEl.textContent="Forward axis flipped."; };
+    document.getElementById("flipSide").onclick=()=>{ sideSign*=-1; statusEl.textContent="Side axis flipped."; };
+
+    function selectGame(next){
+      stop(); mode=next; menu.classList.add("hidden"); start.classList.remove("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); statusEl.textContent="";
+      if(mode==="tilt"){
+        gameTitle.textContent="Tilt Core";
+        gameDesc.textContent="Tilt your phone to keep the ball on the target. Hold the center ring to score faster.";
+        controlsHint.textContent="Phone: tilt to steer. Desktop: arrow keys or WASD.";
+        axisControls.classList.add("hidden");
+      } else {
+        gameTitle.textContent="Sword Roller";
+        gameDesc.textContent="Phone screen-up on an ab roller. This mode ignores tilt and uses horizontal-plane motion only: roll forward/back to thrust and push left/right to sweep the sword.";
+        controlsHint.textContent="Tap Start while the roller is still. Desktop: left/right aim, up/down thrust/retract.";
+        axisControls.classList.remove("hidden");
+      }
+      draw();
     }
 
-    function resetBall() {
-      ball.x = width / 2;
-      ball.y = height / 2;
-      ball.vx = 0;
-      ball.vy = 0;
+    function showMenu(){ stop(); mode=null; menu.classList.remove("hidden"); start.classList.add("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); clear(); }
+    function stop(){ running=false; cancelAnimationFrame(raf); }
+
+    async function startGame(){
+      if(mode==="tilt") await requestOrientation(); else await requestMotion();
+      start.classList.add("hidden"); hud.classList.remove("hidden"); backBtn.classList.remove("hidden");
+      if(mode==="tilt") initTilt(); else initSword();
+      running=true; last=performance.now(); raf=requestAnimationFrame(loop);
     }
 
-    function resetGame() {
-      score = 0;
-      timeLeft = GAME_SECONDS;
-      resetBall();
-      moveTarget();
-      scoreEl.textContent = "0";
-      timeEl.textContent = GAME_SECONDS.toFixed(1);
-    }
-
-    function moveTarget() {
-      const margin = 90;
-      target.x = margin + Math.random() * Math.max(1, width - margin * 2);
-      target.y = margin + Math.random() * Math.max(1, height - margin * 2);
-    }
-
-    async function requestSensors() {
-      usingMotion = false;
-
-      try {
-        if (typeof DeviceOrientationEvent !== "undefined" &&
-            typeof DeviceOrientationEvent.requestPermission === "function") {
-          const result = await DeviceOrientationEvent.requestPermission();
-          if (result !== "granted") {
-            statusEl.textContent = "Motion permission denied. Keyboard controls still work.";
-            return;
-          }
+    async function requestOrientation(){
+      try{
+        if(typeof DeviceOrientationEvent!=="undefined" && typeof DeviceOrientationEvent.requestPermission==="function"){
+          const res=await DeviceOrientationEvent.requestPermission(); if(res!=="granted") statusEl.textContent="Orientation denied. Keyboard still works.";
         }
-
-        window.addEventListener("deviceorientation", handleOrientation, true);
-        usingMotion = true;
-        statusEl.textContent = "";
-      } catch (error) {
-        statusEl.textContent = "Motion unavailable. Keyboard controls still work.";
-      }
+        window.addEventListener("deviceorientation", onOrientation, true);
+      }catch(e){ statusEl.textContent="Orientation unavailable. Keyboard still works."; }
+    }
+    async function requestMotion(){
+      motionSamples=[]; rawAx=rawAy=baseAx=baseAy=0;
+      try{
+        if(typeof DeviceMotionEvent!=="undefined" && typeof DeviceMotionEvent.requestPermission==="function"){
+          const res=await DeviceMotionEvent.requestPermission(); if(res!=="granted") { statusEl.textContent="Motion denied. Keyboard still works."; return; }
+        }
+        window.addEventListener("devicemotion", onMotion, true);
+      }catch(e){ statusEl.textContent="Motion unavailable. Keyboard still works."; }
     }
 
-    function handleOrientation(event) {
-      // gamma = left/right tilt, beta = front/back tilt.
-      // Clamp to keep controls playable.
-      const gamma = clamp(event.gamma || 0, -35, 35);
-      const beta = clamp(event.beta || 0, -35, 35);
-
-      tilt.x = gamma / 35;
-      tilt.y = beta / 35;
+    function loop(now){
+      if(!running) return; const dt=Math.min(.033,(now-last)/1000||0); last=now;
+      if(mode==="tilt") updateTilt(dt); else updateSword(dt);
+      draw(); raf=requestAnimationFrame(loop);
     }
 
-    function keyboardTilt() {
-      let x = 0;
-      let y = 0;
-      if (keys.has("ArrowLeft") || keys.has("a")) x -= 1;
-      if (keys.has("ArrowRight") || keys.has("d")) x += 1;
-      if (keys.has("ArrowUp") || keys.has("w")) y -= 1;
-      if (keys.has("ArrowDown") || keys.has("s")) y += 1;
-      return { x, y };
+    function clear(){ ctx.clearRect(0,0,W,H); }
+    function drawGrid(){ ctx.save(); ctx.globalAlpha=.18; ctx.strokeStyle="#334155"; for(let x=0;x<W;x+=34){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()} for(let y=0;y<H;y+=34){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()} ctx.restore(); }
+    function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+    function dead(v,z){ return Math.abs(v)<z?0:v; }
+    function distPointSeg(px,py,x1,y1,x2,y2){ const A=px-x1,B=py-y1,C=x2-x1,D=y2-y1; const t=clamp((A*C+B*D)/(C*C+D*D||1),0,1); const x=x1+t*C,y=y1+t*D; return Math.hypot(px-x,py-y); }
+    function circleRect(cx,cy,r,x,y,w,h){ const nx=clamp(cx,x,x+w), ny=clamp(cy,y,y+h); return Math.hypot(cx-nx,cy-ny)<r; }
+    function burst(x,y,color,n=10){ for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-.5)*220,vy:(Math.random()-.5)*220,life:.45,color}); }
+    function updateParticles(dt){ for(const p of particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.94;p.vy*=.94} particles=particles.filter(p=>p.life>0); }
+    function drawParticles(){ for(const p of particles){ctx.globalAlpha=clamp(p.life/.45,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()} ctx.globalAlpha=1; }
+
+    // Game 1: Tilt Core.
+    let ball,target,tiltX=0,tiltY=0;
+    function onOrientation(e){ tiltX=clamp((e.gamma||0)/35,-1,1); tiltY=clamp((e.beta||0)/35,-1,1); }
+    function initTilt(){ score=0; timeLeft=30; leftLabel.textContent="Score"; midLabel.textContent="Mode"; middleEl.textContent="Tilt"; ball={x:W/2,y:H/2,vx:0,vy:0,r:18}; target={x:W/2,y:H/2,r:54}; moveTarget(); }
+    function moveTarget(){ target.x=80+Math.random()*Math.max(1,W-160); target.y=95+Math.random()*Math.max(1,H-210); }
+    function updateTilt(dt){
+      timeLeft=Math.max(0,timeLeft-dt);
+      let kx=(keys.has("ArrowLeft")||keys.has("a")?-1:0)+(keys.has("ArrowRight")||keys.has("d")?1:0);
+      let ky=(keys.has("ArrowUp")||keys.has("w")?-1:0)+(keys.has("ArrowDown")||keys.has("s")?1:0);
+      const ix=kx||tiltX, iy=ky||tiltY;
+      ball.vx+=ix*900*dt; ball.vy+=iy*900*dt; ball.vx*=Math.pow(.82,dt*60); ball.vy*=Math.pow(.82,dt*60); ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
+      if(ball.x<ball.r){ball.x=ball.r;ball.vx*=-.45} if(ball.x>W-ball.r){ball.x=W-ball.r;ball.vx*=-.45} if(ball.y<ball.r){ball.y=ball.r;ball.vy*=-.45} if(ball.y>H-ball.r){ball.y=H-ball.r;ball.vy*=-.45}
+      const d=Math.hypot(ball.x-target.x,ball.y-target.y); if(d<target.r) score+=dt*(d<target.r*.45?12:5); if(d<ball.r+8){score+=10;moveTarget();}
+      scoreEl.textContent=Math.floor(score); timeEl.textContent=timeLeft.toFixed(1); if(timeLeft<=0) end("Final score: "+Math.floor(score));
     }
-
-    function update(dt) {
-      timeLeft = Math.max(0, timeLeft - dt);
-
-      const keyboard = keyboardTilt();
-      const inputX = keyboard.x || tilt.x;
-      const inputY = keyboard.y || tilt.y;
-
-      const accel = usingMotion ? 980 : 760;
-      ball.vx += inputX * accel * dt;
-      ball.vy += inputY * accel * dt;
-
-      ball.vx *= Math.pow(0.82, dt * 60);
-      ball.vy *= Math.pow(0.82, dt * 60);
-
-      ball.x += ball.vx * dt;
-      ball.y += ball.vy * dt;
-
-      bounceWalls();
-
-      const dist = Math.hypot(ball.x - target.x, ball.y - target.y);
-      if (dist < target.r) {
-        score += dt * (dist < target.r * 0.45 ? 12 : 5);
-      }
-
-      if (dist < ball.r + 8) {
-        score += 10;
-        moveTarget();
-      }
-
-      scoreEl.textContent = Math.floor(score).toString();
-      timeEl.textContent = timeLeft.toFixed(1);
-
-      if (timeLeft <= 0) endGame();
-    }
-
-    function bounceWalls() {
-      const damping = -0.46;
-      if (ball.x < ball.r) {
-        ball.x = ball.r;
-        ball.vx *= damping;
-      }
-      if (ball.x > width - ball.r) {
-        ball.x = width - ball.r;
-        ball.vx *= damping;
-      }
-      if (ball.y < ball.r) {
-        ball.y = ball.r;
-        ball.vy *= damping;
-      }
-      if (ball.y > height - ball.r) {
-        ball.y = height - ball.r;
-        ball.vy *= damping;
-      }
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, width, height);
-
+    function drawTilt(){
       drawGrid();
-      drawTarget();
-      drawBall();
+      ctx.fillStyle="rgba(34,197,94,.12)"; ctx.strokeStyle="rgba(134,239,172,.85)"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(target.x,target.y,target.r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle="rgba(34,197,94,.22)"; ctx.beginPath(); ctx.arc(target.x,target.y,target.r*.45,0,Math.PI*2); ctx.fill();
+      const g=ctx.createRadialGradient(ball.x-7,ball.y-8,2,ball.x,ball.y,25); g.addColorStop(0,"#fff"); g.addColorStop(.5,"#93c5fd"); g.addColorStop(1,"#1d4ed8");
+      ctx.shadowColor="rgba(59,130,246,.7)"; ctx.shadowBlur=24; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
     }
 
-    function drawGrid() {
-      ctx.save();
-      ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = "#334155";
-      ctx.lineWidth = 1;
-      const step = 34;
-      for (let x = 0; x <= width; x += step) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
+    // Game 2: Sword Roller, no tilt. Uses only screen-plane motion x/y.
+    let rawAx=0, rawAy=0, baseAx=0, baseAy=0, motionSamples=[];
+    let sidePos=0, sideVel=0, thrust=0, thrustVel=0, prevThrust=0, monsters=[];
+    function onMotion(e){
+      const a=e.acceleration || e.accelerationIncludingGravity || {}; rawAx=typeof a.x==="number"?a.x:0; rawAy=typeof a.y==="number"?a.y:0;
+      if(motionSamples.length<30){ motionSamples.push({x:rawAx,y:rawAy}); baseAx=motionSamples.reduce((s,p)=>s+p.x,0)/motionSamples.length; baseAy=motionSamples.reduce((s,p)=>s+p.y,0)/motionSamples.length; }
+    }
+    function initSword(){ score=0; health=100; timeLeft=45; monsters=[]; particles=[]; sidePos=sideVel=thrust=thrustVel=prevThrust=0; motionSamples=[]; leftLabel.textContent="Score"; midLabel.textContent="Gate"; middleEl.textContent=health; spawnTimer=.2; }
+    function origin(){ return {x:W/2,y:H-78}; }
+    function gate(){ return {x:W/2,y:H-34,w:Math.min(190,W*.48),h:24}; }
+    function spawnMonster(){ const o=origin(), R=Math.min(H*.73,630), a=-Math.PI/4+Math.random()*Math.PI/2, hp=Math.random()<.2?2:1; monsters.push({x:o.x+Math.sin(a)*R,y:o.y-Math.cos(a)*R,r:hp===2?23:17,hp,maxHp:hp,speed:42+Math.random()*30+Math.min(45,score*.035),wob:Math.random()*9,cd:0}); }
+    function updateSword(dt){
+      timeLeft=Math.max(0,timeLeft-dt);
+      const left=keys.has("ArrowLeft")||keys.has("a"), right=keys.has("ArrowRight")||keys.has("d"), up=keys.has("ArrowUp")||keys.has("w"), down=keys.has("ArrowDown")||keys.has("s");
+      const kSide=(left?-1:0)+(right?1:0), kThrust=(up?1:0)+(down?-1:0);
+      if(kSide||kThrust){ sidePos=clamp(sidePos+kSide*dt*1.7,-1,1); thrust=clamp(thrust+kThrust*dt*2.4,0,1); if(!up&&!down) thrust=clamp(thrust-dt*1.1,0,1); }
+      else {
+        const ax=dead((rawAx-baseAx)*sideSign,.12), ay=dead((rawAy-baseAy)*forwardSign,.16);
+        sideVel+=ax*dt*1.8; sideVel*=Math.pow(.82,dt*60); sidePos=clamp((sidePos+sideVel*dt*2.4)*Math.pow(.985,dt*60),-1,1);
+        thrustVel+=ay*dt*2.1; thrustVel*=Math.pow(.84,dt*60); thrust=clamp((thrust+thrustVel*dt*2.2)*Math.pow(.996,dt*60),0,1);
       }
-      for (let y = 0; y <= height; y += step) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-      ctx.restore();
+      spawnTimer-=dt; if(spawnTimer<=0){spawnMonster(); spawnTimer=Math.max(.45,1.18-score*.0018);}
+      const o=origin(), g=gate();
+      for(const m of monsters){ m.cd=Math.max(0,m.cd-dt); m.wob+=dt*5; const dx=o.x-m.x, dy=o.y-m.y, d=Math.max(1,Math.hypot(dx,dy)); m.x+=dx/d*m.speed*dt + (-dy/d*Math.sin(m.wob)*4*dt); m.y+=dy/d*m.speed*dt + (dx/d*Math.sin(m.wob)*4*dt); if(circleRect(m.x,m.y,m.r,g.x-g.w/2,g.y-g.h/2,g.w,g.h)){ health-=m.maxHp===2?18:12; burst(m.x,m.y,"#fb7185",12); m.dead=true; } }
+      const angle=sidePos*Math.PI/4, len=90+thrust*Math.min(370,H*.52), tip={x:o.x+Math.sin(angle)*len,y:o.y-Math.cos(angle)*len};
+      const stabbing=thrust>.24 && thrust>=prevThrust-.01;
+      for(const m of monsters){ if(m.cd>0) continue; const d=distPointSeg(m.x,m.y,o.x,o.y,tip.x,tip.y); if(stabbing && d<m.r+10){ m.hp--; m.cd=.18; score+=15; burst(m.x,m.y,m.hp<=0?"#a78bfa":"#fbbf24",10); if(m.hp<=0){score+=m.maxHp===2?35:20; m.dead=true;} } }
+      monsters=monsters.filter(m=>!m.dead); updateParticles(dt); prevThrust=thrust;
+      scoreEl.textContent=Math.floor(score); middleEl.textContent=Math.max(0,Math.floor(health)); timeEl.textContent=timeLeft.toFixed(1); if(health<=0||timeLeft<=0) end(`Score: ${Math.floor(score)} | Gate: ${Math.max(0,Math.floor(health))}`);
+    }
+    function drawSword(){
+      drawGrid(); const o=origin(), g=gate();
+      ctx.fillStyle="rgba(56,189,248,.12)"; ctx.strokeStyle="rgba(125,211,252,.55)"; ctx.beginPath(); ctx.moveTo(o.x,o.y); ctx.arc(o.x,o.y,Math.min(390,H*.54),-Math.PI*3/4,-Math.PI/4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle="#64748b"; ctx.fillRect(g.x-g.w/2,g.y-g.h/2,g.w,g.h); ctx.fillStyle="#e2e8f0"; ctx.fillRect(g.x-g.w/2+8,g.y-g.h/2+5,g.w-16,4);
+      for(const m of monsters){ ctx.fillStyle=m.maxHp===2?"#7c3aed":"#dc2626"; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(m.x-m.r*.32,m.y-m.r*.18,3,0,Math.PI*2); ctx.arc(m.x+m.r*.32,m.y-m.r*.18,3,0,Math.PI*2); ctx.fill(); }
+      const angle=sidePos*Math.PI/4, len=90+thrust*Math.min(370,H*.52), tip={x:o.x+Math.sin(angle)*len,y:o.y-Math.cos(angle)*len};
+      ctx.strokeStyle="#e5e7eb"; ctx.lineWidth=8; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(o.x,o.y); ctx.lineTo(tip.x,tip.y); ctx.stroke(); ctx.strokeStyle="#93c5fd"; ctx.lineWidth=3; ctx.stroke();
+      ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(o.x,o.y,18,0,Math.PI*2); ctx.fill(); drawParticles();
     }
 
-    function drawTarget() {
-      const pulse = 1 + Math.sin(performance.now() / 180) * 0.035;
-      ctx.save();
-      ctx.translate(target.x, target.y);
-      ctx.scale(pulse, pulse);
-
-      ctx.beginPath();
-      ctx.arc(0, 0, target.r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(34, 197, 94, 0.12)";
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(134, 239, 172, 0.85)";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(0, 0, target.r * 0.45, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(34, 197, 94, 0.22)";
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function drawBall() {
-      const grad = ctx.createRadialGradient(
-        ball.x - ball.r * 0.35,
-        ball.y - ball.r * 0.45,
-        2,
-        ball.x,
-        ball.y,
-        ball.r * 1.3
-      );
-      grad.addColorStop(0, "#ffffff");
-      grad.addColorStop(0.48, "#93c5fd");
-      grad.addColorStop(1, "#1d4ed8");
-
-      ctx.save();
-      ctx.shadowColor = "rgba(59, 130, 246, 0.7)";
-      ctx.shadowBlur = 24;
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function loop(now) {
-      if (!running) return;
-      const dt = Math.min(0.033, (now - lastTime) / 1000 || 0);
-      lastTime = now;
-      update(dt);
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    async function startGame() {
-      await requestSensors();
-      resize();
-      resetGame();
-      overlay.style.display = "none";
-      running = true;
-      lastTime = performance.now();
-      requestAnimationFrame(loop);
-    }
-
-    function endGame() {
-      running = false;
-      overlay.style.display = "grid";
-      startBtn.textContent = "Play Again";
-      statusEl.textContent = `Final score: ${Math.floor(score)}`;
-      draw();
-    }
-
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-    }
-
-    startBtn.addEventListener("click", startGame);
-    window.addEventListener("resize", resize);
-    window.addEventListener("keydown", (e) => keys.add(e.key));
-    window.addEventListener("keyup", (e) => keys.delete(e.key));
-
-    resize();
-    draw();
+    function draw(){ clear(); if(mode==="tilt"&&ball) drawTilt(); else if(mode==="sword") drawSword(); }
+    function end(msg){ running=false; start.classList.remove("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); document.getElementById("startBtn").textContent="Play Again"; statusEl.textContent=msg; }
+    showMenu();
   </script>
 </body>
 </html>
