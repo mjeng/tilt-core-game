@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tilt Core Game</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f8fafc;
+      background: #020617;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at top, #1e293b 0%, #020617 58%);
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      touch-action: none;
+      user-select: none;
+    }
+
+    #gameWrap {
+      position: relative;
+      width: min(100vw, 520px);
+      height: 100vh;
+      max-height: 900px;
+      overflow: hidden;
+      border-inline: 1px solid rgba(148, 163, 184, 0.18);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: absolute;
+      inset: env(safe-area-inset-top) 0 auto 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 16px;
+      pointer-events: none;
+      font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .metric {
+      display: grid;
+      gap: 2px;
+    }
+
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+
+    .value {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(2, 6, 23, 0.72);
+      backdrop-filter: blur(12px);
+    }
+
+    .panel {
+      width: min(100%, 420px);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 28px;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.86);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      letter-spacing: -0.04em;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 18px;
+      padding: 15px 18px;
+      font: inherit;
+      font-weight: 800;
+      color: #020617;
+      background: #f8fafc;
+      cursor: pointer;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    #status {
+      min-height: 18px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <main id="gameWrap">
+    <canvas id="game"></canvas>
+
+    <div class="hud">
+      <div class="metric">
+        <span class="label">Score</span>
+        <span class="value" id="score">0</span>
+      </div>
+      <div class="metric" style="text-align: right;">
+        <span class="label">Time</span>
+        <span class="value" id="time">30.0</span>
+      </div>
+    </div>
+
+    <section id="overlay">
+      <div class="panel">
+        <h1>Tilt Core</h1>
+        <p>Tilt your phone to keep the ball on target. Hold the center ring to score faster.</p>
+        <button id="startBtn">Start Game</button>
+        <div class="hint">Desktop test: use arrow keys or WASD.</div>
+        <div id="status"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const startBtn = document.getElementById("startBtn");
+    const statusEl = document.getElementById("status");
+    const scoreEl = document.getElementById("score");
+    const timeEl = document.getElementById("time");
+
+    const GAME_SECONDS = 30;
+    const keys = new Set();
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let running = false;
+    let score = 0;
+    let timeLeft = GAME_SECONDS;
+    let lastTime = 0;
+    let target = { x: 0, y: 0, r: 54 };
+    let ball = { x: 0, y: 0, vx: 0, vy: 0, r: 18 };
+    let tilt = { x: 0, y: 0 };
+    let usingMotion = false;
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+      width = rect.width;
+      height = rect.height;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      target.x = width / 2;
+      target.y = height / 2;
+      if (!running) resetBall();
+    }
+
+    function resetBall() {
+      ball.x = width / 2;
+      ball.y = height / 2;
+      ball.vx = 0;
+      ball.vy = 0;
+    }
+
+    function resetGame() {
+      score = 0;
+      timeLeft = GAME_SECONDS;
+      resetBall();
+      moveTarget();
+      scoreEl.textContent = "0";
+      timeEl.textContent = GAME_SECONDS.toFixed(1);
+    }
+
+    function moveTarget() {
+      const margin = 90;
+      target.x = margin + Math.random() * Math.max(1, width - margin * 2);
+      target.y = margin + Math.random() * Math.max(1, height - margin * 2);
+    }
+
+    async function requestSensors() {
+      usingMotion = false;
+
+      try {
+        if (typeof DeviceOrientationEvent !== "undefined" &&
+            typeof DeviceOrientationEvent.requestPermission === "function") {
+          const result = await DeviceOrientationEvent.requestPermission();
+          if (result !== "granted") {
+            statusEl.textContent = "Motion permission denied. Keyboard controls still work.";
+            return;
+          }
+        }
+
+        window.addEventListener("deviceorientation", handleOrientation, true);
+        usingMotion = true;
+        statusEl.textContent = "";
+      } catch (error) {
+        statusEl.textContent = "Motion unavailable. Keyboard controls still work.";
+      }
+    }
+
+    function handleOrientation(event) {
+      // gamma = left/right tilt, beta = front/back tilt.
+      // Clamp to keep controls playable.
+      const gamma = clamp(event.gamma || 0, -35, 35);
+      const beta = clamp(event.beta || 0, -35, 35);
+
+      tilt.x = gamma / 35;
+      tilt.y = beta / 35;
+    }
+
+    function keyboardTilt() {
+      let x = 0;
+      let y = 0;
+      if (keys.has("ArrowLeft") || keys.has("a")) x -= 1;
+      if (keys.has("ArrowRight") || keys.has("d")) x += 1;
+      if (keys.has("ArrowUp") || keys.has("w")) y -= 1;
+      if (keys.has("ArrowDown") || keys.has("s")) y += 1;
+      return { x, y };
+    }
+
+    function update(dt) {
+      timeLeft = Math.max(0, timeLeft - dt);
+
+      const keyboard = keyboardTilt();
+      const inputX = keyboard.x || tilt.x;
+      const inputY = keyboard.y || tilt.y;
+
+      const accel = usingMotion ? 980 : 760;
+      ball.vx += inputX * accel * dt;
+      ball.vy += inputY * accel * dt;
+
+      ball.vx *= Math.pow(0.82, dt * 60);
+      ball.vy *= Math.pow(0.82, dt * 60);
+
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+
+      bounceWalls();
+
+      const dist = Math.hypot(ball.x - target.x, ball.y - target.y);
+      if (dist < target.r) {
+        score += dt * (dist < target.r * 0.45 ? 12 : 5);
+      }
+
+      if (dist < ball.r + 8) {
+        score += 10;
+        moveTarget();
+      }
+
+      scoreEl.textContent = Math.floor(score).toString();
+      timeEl.textContent = timeLeft.toFixed(1);
+
+      if (timeLeft <= 0) endGame();
+    }
+
+    function bounceWalls() {
+      const damping = -0.46;
+      if (ball.x < ball.r) {
+        ball.x = ball.r;
+        ball.vx *= damping;
+      }
+      if (ball.x > width - ball.r) {
+        ball.x = width - ball.r;
+        ball.vx *= damping;
+      }
+      if (ball.y < ball.r) {
+        ball.y = ball.r;
+        ball.vy *= damping;
+      }
+      if (ball.y > height - ball.r) {
+        ball.y = height - ball.r;
+        ball.vy *= damping;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      drawGrid();
+      drawTarget();
+      drawBall();
+    }
+
+    function drawGrid() {
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.strokeStyle = "#334155";
+      ctx.lineWidth = 1;
+      const step = 34;
+      for (let x = 0; x <= width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawTarget() {
+      const pulse = 1 + Math.sin(performance.now() / 180) * 0.035;
+      ctx.save();
+      ctx.translate(target.x, target.y);
+      ctx.scale(pulse, pulse);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, target.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(34, 197, 94, 0.12)";
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(134, 239, 172, 0.85)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, target.r * 0.45, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(34, 197, 94, 0.22)";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawBall() {
+      const grad = ctx.createRadialGradient(
+        ball.x - ball.r * 0.35,
+        ball.y - ball.r * 0.45,
+        2,
+        ball.x,
+        ball.y,
+        ball.r * 1.3
+      );
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.48, "#93c5fd");
+      grad.addColorStop(1, "#1d4ed8");
+
+      ctx.save();
+      ctx.shadowColor = "rgba(59, 130, 246, 0.7)";
+      ctx.shadowBlur = 24;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function loop(now) {
+      if (!running) return;
+      const dt = Math.min(0.033, (now - lastTime) / 1000 || 0);
+      lastTime = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    async function startGame() {
+      await requestSensors();
+      resize();
+      resetGame();
+      overlay.style.display = "none";
+      running = true;
+      lastTime = performance.now();
+      requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      running = false;
+      overlay.style.display = "grid";
+      startBtn.textContent = "Play Again";
+      statusEl.textContent = `Final score: ${Math.floor(score)}`;
+      draw();
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    startBtn.addEventListener("click", startGame);
+    window.addEventListener("resize", resize);
+    window.addEventListener("keydown", (e) => keys.add(e.key));
+    window.addEventListener("keyup", (e) => keys.delete(e.key));
+
+    resize();
+    draw();
+  </script>
+</body>
+</html>
