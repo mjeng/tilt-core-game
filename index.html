@@ -46,7 +46,7 @@
     <section id="menu" class="screen">
       <div class="panel">
         <h1>Core Arcade</h1>
-        <p>Choose a phone-controlled core game. Works as a single static GitHub Pages file.</p>
+        <p>Choose a phone-controlled core game. Works as a static GitHub Pages app.</p>
         <button id="chooseTilt">Tilt Core</button>
         <button id="chooseSword">Sword Roller</button>
         <div class="hint">Tilt Core uses orientation. Sword Roller ignores tilt and uses screen-plane motion from DeviceMotion.</div>
@@ -69,7 +69,10 @@
     </section>
   </main>
 
-  <script>
+  <script type="module">
+    import { createTiltCoreGame } from "./tilt-core.js";
+    import { createSwordRollerGame } from "./sword-roller.js";
+
     const canvas = document.getElementById("game"), ctx = canvas.getContext("2d");
     const menu = document.getElementById("menu"), start = document.getElementById("start"), hud = document.getElementById("hud");
     const scoreEl = document.getElementById("score"), middleEl = document.getElementById("middle"), timeEl = document.getElementById("time");
@@ -78,8 +81,7 @@
     const axisControls = document.getElementById("axisControls"), backBtn = document.getElementById("backBtn");
     const keys = new Set();
 
-    let W=0,H=0,DPR=1, mode=null, running=false, last=0, raf=0;
-    let score=0, timeLeft=0, health=100, particles=[];
+    let W=0,H=0,DPR=1, mode=null, currentGame=null, running=false, last=0, raf=0;
 
     function resize(){
       const r=canvas.getBoundingClientRect(); DPR=Math.max(1,Math.min(3,devicePixelRatio||1)); W=r.width; H=r.height;
@@ -94,57 +96,62 @@
     backBtn.onclick=showMenu;
     document.getElementById("startBtn").onclick=()=>startGame();
 
-    let forwardSign=1, sideSign=1;
-    document.getElementById("flipForward").onclick=()=>{ forwardSign*=-1; statusEl.textContent="Forward axis flipped."; };
-    document.getElementById("flipSide").onclick=()=>{ sideSign*=-1; statusEl.textContent="Side axis flipped."; };
+    const env = {
+      ctx,
+      keys,
+      size: () => ({ W, H }),
+      setHudLabels: ({ left, middle }) => {
+        leftLabel.textContent = left;
+        midLabel.textContent = middle;
+      },
+      setHudValues: ({ left, middle, time }) => {
+        scoreEl.textContent = left;
+        middleEl.textContent = middle;
+        timeEl.textContent = time;
+      },
+      setStatus: msg => { statusEl.textContent = msg; },
+      end,
+      drawGrid,
+      clamp,
+      dead,
+      distPointSeg,
+      circleRect
+    };
+
+    const games = {
+      tilt: createTiltCoreGame(env),
+      sword: createSwordRollerGame(env)
+    };
+
+    document.getElementById("flipForward").onclick=()=>currentGame?.flipForward?.();
+    document.getElementById("flipSide").onclick=()=>currentGame?.flipSide?.();
 
     function selectGame(next){
-      stop(); mode=next; menu.classList.add("hidden"); start.classList.remove("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); statusEl.textContent="";
-      if(mode==="tilt"){
-        gameTitle.textContent="Tilt Core";
-        gameDesc.textContent="Tilt your phone to keep the ball on the target. Hold the center ring to score faster.";
-        controlsHint.textContent="Phone: tilt to steer. Desktop: arrow keys or WASD.";
-        axisControls.classList.add("hidden");
-      } else {
-        gameTitle.textContent="Sword Roller";
-        gameDesc.textContent="Phone screen-up on an ab roller. This mode ignores tilt and uses horizontal-plane motion only: roll forward/back to thrust and push left/right to sweep the sword.";
-        controlsHint.textContent="Tap Start while the roller is still. Desktop: left/right aim, up/down thrust/retract.";
-        axisControls.classList.remove("hidden");
-      }
+      stop(); mode=next; currentGame=games[mode]; menu.classList.add("hidden"); start.classList.remove("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); statusEl.textContent="";
+      const meta=currentGame.meta;
+      gameTitle.textContent=meta.title;
+      gameDesc.textContent=meta.description;
+      controlsHint.textContent=meta.controls;
+      axisControls.classList.toggle("hidden", !meta.showAxisControls);
+      document.getElementById("startBtn").textContent="Start Game";
+      currentGame.resetPreview();
       draw();
     }
 
-    function showMenu(){ stop(); mode=null; menu.classList.remove("hidden"); start.classList.add("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); clear(); }
-    function stop(){ running=false; cancelAnimationFrame(raf); }
+    function showMenu(){ stop(); mode=null; currentGame=null; menu.classList.remove("hidden"); start.classList.add("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); clear(); }
+    function stop(){ running=false; cancelAnimationFrame(raf); currentGame?.stop?.(); }
 
     async function startGame(){
-      if(mode==="tilt") await requestOrientation(); else await requestMotion();
+      if(!currentGame) return;
+      await currentGame.requestSensor();
       start.classList.add("hidden"); hud.classList.remove("hidden"); backBtn.classList.remove("hidden");
-      if(mode==="tilt") initTilt(); else initSword();
+      currentGame.init();
       running=true; last=performance.now(); raf=requestAnimationFrame(loop);
-    }
-
-    async function requestOrientation(){
-      try{
-        if(typeof DeviceOrientationEvent!=="undefined" && typeof DeviceOrientationEvent.requestPermission==="function"){
-          const res=await DeviceOrientationEvent.requestPermission(); if(res!=="granted") statusEl.textContent="Orientation denied. Keyboard still works.";
-        }
-        window.addEventListener("deviceorientation", onOrientation, true);
-      }catch(e){ statusEl.textContent="Orientation unavailable. Keyboard still works."; }
-    }
-    async function requestMotion(){
-      motionSamples=[]; rawAx=rawAy=baseAx=baseAy=0;
-      try{
-        if(typeof DeviceMotionEvent!=="undefined" && typeof DeviceMotionEvent.requestPermission==="function"){
-          const res=await DeviceMotionEvent.requestPermission(); if(res!=="granted") { statusEl.textContent="Motion denied. Keyboard still works."; return; }
-        }
-        window.addEventListener("devicemotion", onMotion, true);
-      }catch(e){ statusEl.textContent="Motion unavailable. Keyboard still works."; }
     }
 
     function loop(now){
       if(!running) return; const dt=Math.min(.033,(now-last)/1000||0); last=now;
-      if(mode==="tilt") updateTilt(dt); else updateSword(dt);
+      currentGame.update(dt);
       draw(); raf=requestAnimationFrame(loop);
     }
 
@@ -154,74 +161,8 @@
     function dead(v,z){ return Math.abs(v)<z?0:v; }
     function distPointSeg(px,py,x1,y1,x2,y2){ const A=px-x1,B=py-y1,C=x2-x1,D=y2-y1; const t=clamp((A*C+B*D)/(C*C+D*D||1),0,1); const x=x1+t*C,y=y1+t*D; return Math.hypot(px-x,py-y); }
     function circleRect(cx,cy,r,x,y,w,h){ const nx=clamp(cx,x,x+w), ny=clamp(cy,y,y+h); return Math.hypot(cx-nx,cy-ny)<r; }
-    function burst(x,y,color,n=10){ for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-.5)*220,vy:(Math.random()-.5)*220,life:.45,color}); }
-    function updateParticles(dt){ for(const p of particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.94;p.vy*=.94} particles=particles.filter(p=>p.life>0); }
-    function drawParticles(){ for(const p of particles){ctx.globalAlpha=clamp(p.life/.45,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()} ctx.globalAlpha=1; }
 
-    // Game 1: Tilt Core.
-    let ball,target,tiltX=0,tiltY=0;
-    function onOrientation(e){ tiltX=clamp((e.gamma||0)/35,-1,1); tiltY=clamp((e.beta||0)/35,-1,1); }
-    function initTilt(){ score=0; timeLeft=30; leftLabel.textContent="Score"; midLabel.textContent="Mode"; middleEl.textContent="Tilt"; ball={x:W/2,y:H/2,vx:0,vy:0,r:18}; target={x:W/2,y:H/2,r:54}; moveTarget(); }
-    function moveTarget(){ target.x=80+Math.random()*Math.max(1,W-160); target.y=95+Math.random()*Math.max(1,H-210); }
-    function updateTilt(dt){
-      timeLeft=Math.max(0,timeLeft-dt);
-      let kx=(keys.has("ArrowLeft")||keys.has("a")?-1:0)+(keys.has("ArrowRight")||keys.has("d")?1:0);
-      let ky=(keys.has("ArrowUp")||keys.has("w")?-1:0)+(keys.has("ArrowDown")||keys.has("s")?1:0);
-      const ix=kx||tiltX, iy=ky||tiltY;
-      ball.vx+=ix*900*dt; ball.vy+=iy*900*dt; ball.vx*=Math.pow(.82,dt*60); ball.vy*=Math.pow(.82,dt*60); ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
-      if(ball.x<ball.r){ball.x=ball.r;ball.vx*=-.45} if(ball.x>W-ball.r){ball.x=W-ball.r;ball.vx*=-.45} if(ball.y<ball.r){ball.y=ball.r;ball.vy*=-.45} if(ball.y>H-ball.r){ball.y=H-ball.r;ball.vy*=-.45}
-      const d=Math.hypot(ball.x-target.x,ball.y-target.y); if(d<target.r) score+=dt*(d<target.r*.45?12:5); if(d<ball.r+8){score+=10;moveTarget();}
-      scoreEl.textContent=Math.floor(score); timeEl.textContent=timeLeft.toFixed(1); if(timeLeft<=0) end("Final score: "+Math.floor(score));
-    }
-    function drawTilt(){
-      drawGrid();
-      ctx.fillStyle="rgba(34,197,94,.12)"; ctx.strokeStyle="rgba(134,239,172,.85)"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(target.x,target.y,target.r,0,Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle="rgba(34,197,94,.22)"; ctx.beginPath(); ctx.arc(target.x,target.y,target.r*.45,0,Math.PI*2); ctx.fill();
-      const g=ctx.createRadialGradient(ball.x-7,ball.y-8,2,ball.x,ball.y,25); g.addColorStop(0,"#fff"); g.addColorStop(.5,"#93c5fd"); g.addColorStop(1,"#1d4ed8");
-      ctx.shadowColor="rgba(59,130,246,.7)"; ctx.shadowBlur=24; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-    }
-
-    // Game 2: Sword Roller, no tilt. Uses only screen-plane motion x/y.
-    let rawAx=0, rawAy=0, baseAx=0, baseAy=0, motionSamples=[];
-    let sidePos=0, sideVel=0, thrust=0, thrustVel=0, prevThrust=0, monsters=[];
-    function onMotion(e){
-      const a=e.acceleration || e.accelerationIncludingGravity || {}; rawAx=typeof a.x==="number"?a.x:0; rawAy=typeof a.y==="number"?a.y:0;
-      if(motionSamples.length<30){ motionSamples.push({x:rawAx,y:rawAy}); baseAx=motionSamples.reduce((s,p)=>s+p.x,0)/motionSamples.length; baseAy=motionSamples.reduce((s,p)=>s+p.y,0)/motionSamples.length; }
-    }
-    function initSword(){ score=0; health=100; timeLeft=45; monsters=[]; particles=[]; sidePos=sideVel=thrust=thrustVel=prevThrust=0; motionSamples=[]; leftLabel.textContent="Score"; midLabel.textContent="Gate"; middleEl.textContent=health; spawnTimer=.2; }
-    function origin(){ return {x:W/2,y:H-78}; }
-    function gate(){ return {x:W/2,y:H-34,w:Math.min(190,W*.48),h:24}; }
-    function spawnMonster(){ const o=origin(), R=Math.min(H*.73,630), a=-Math.PI/4+Math.random()*Math.PI/2, hp=Math.random()<.2?2:1; monsters.push({x:o.x+Math.sin(a)*R,y:o.y-Math.cos(a)*R,r:hp===2?23:17,hp,maxHp:hp,speed:42+Math.random()*30+Math.min(45,score*.035),wob:Math.random()*9,cd:0}); }
-    function updateSword(dt){
-      timeLeft=Math.max(0,timeLeft-dt);
-      const left=keys.has("ArrowLeft")||keys.has("a"), right=keys.has("ArrowRight")||keys.has("d"), up=keys.has("ArrowUp")||keys.has("w"), down=keys.has("ArrowDown")||keys.has("s");
-      const kSide=(left?-1:0)+(right?1:0), kThrust=(up?1:0)+(down?-1:0);
-      if(kSide||kThrust){ sidePos=clamp(sidePos+kSide*dt*1.7,-1,1); thrust=clamp(thrust+kThrust*dt*2.4,0,1); if(!up&&!down) thrust=clamp(thrust-dt*1.1,0,1); }
-      else {
-        const ax=dead((rawAx-baseAx)*sideSign,.12), ay=dead((rawAy-baseAy)*forwardSign,.16);
-        sideVel+=ax*dt*1.8; sideVel*=Math.pow(.82,dt*60); sidePos=clamp((sidePos+sideVel*dt*2.4)*Math.pow(.985,dt*60),-1,1);
-        thrustVel+=ay*dt*2.1; thrustVel*=Math.pow(.84,dt*60); thrust=clamp((thrust+thrustVel*dt*2.2)*Math.pow(.996,dt*60),0,1);
-      }
-      spawnTimer-=dt; if(spawnTimer<=0){spawnMonster(); spawnTimer=Math.max(.45,1.18-score*.0018);}
-      const o=origin(), g=gate();
-      for(const m of monsters){ m.cd=Math.max(0,m.cd-dt); m.wob+=dt*5; const dx=o.x-m.x, dy=o.y-m.y, d=Math.max(1,Math.hypot(dx,dy)); m.x+=dx/d*m.speed*dt + (-dy/d*Math.sin(m.wob)*4*dt); m.y+=dy/d*m.speed*dt + (dx/d*Math.sin(m.wob)*4*dt); if(circleRect(m.x,m.y,m.r,g.x-g.w/2,g.y-g.h/2,g.w,g.h)){ health-=m.maxHp===2?18:12; burst(m.x,m.y,"#fb7185",12); m.dead=true; } }
-      const angle=sidePos*Math.PI/4, len=90+thrust*Math.min(370,H*.52), tip={x:o.x+Math.sin(angle)*len,y:o.y-Math.cos(angle)*len};
-      const stabbing=thrust>.24 && thrust>=prevThrust-.01;
-      for(const m of monsters){ if(m.cd>0) continue; const d=distPointSeg(m.x,m.y,o.x,o.y,tip.x,tip.y); if(stabbing && d<m.r+10){ m.hp--; m.cd=.18; score+=15; burst(m.x,m.y,m.hp<=0?"#a78bfa":"#fbbf24",10); if(m.hp<=0){score+=m.maxHp===2?35:20; m.dead=true;} } }
-      monsters=monsters.filter(m=>!m.dead); updateParticles(dt); prevThrust=thrust;
-      scoreEl.textContent=Math.floor(score); middleEl.textContent=Math.max(0,Math.floor(health)); timeEl.textContent=timeLeft.toFixed(1); if(health<=0||timeLeft<=0) end(`Score: ${Math.floor(score)} | Gate: ${Math.max(0,Math.floor(health))}`);
-    }
-    function drawSword(){
-      drawGrid(); const o=origin(), g=gate();
-      ctx.fillStyle="rgba(56,189,248,.12)"; ctx.strokeStyle="rgba(125,211,252,.55)"; ctx.beginPath(); ctx.moveTo(o.x,o.y); ctx.arc(o.x,o.y,Math.min(390,H*.54),-Math.PI*3/4,-Math.PI/4); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle="#64748b"; ctx.fillRect(g.x-g.w/2,g.y-g.h/2,g.w,g.h); ctx.fillStyle="#e2e8f0"; ctx.fillRect(g.x-g.w/2+8,g.y-g.h/2+5,g.w-16,4);
-      for(const m of monsters){ ctx.fillStyle=m.maxHp===2?"#7c3aed":"#dc2626"; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(m.x-m.r*.32,m.y-m.r*.18,3,0,Math.PI*2); ctx.arc(m.x+m.r*.32,m.y-m.r*.18,3,0,Math.PI*2); ctx.fill(); }
-      const angle=sidePos*Math.PI/4, len=90+thrust*Math.min(370,H*.52), tip={x:o.x+Math.sin(angle)*len,y:o.y-Math.cos(angle)*len};
-      ctx.strokeStyle="#e5e7eb"; ctx.lineWidth=8; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(o.x,o.y); ctx.lineTo(tip.x,tip.y); ctx.stroke(); ctx.strokeStyle="#93c5fd"; ctx.lineWidth=3; ctx.stroke();
-      ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(o.x,o.y,18,0,Math.PI*2); ctx.fill(); drawParticles();
-    }
-
-    function draw(){ clear(); if(mode==="tilt"&&ball) drawTilt(); else if(mode==="sword") drawSword(); }
+    function draw(){ clear(); currentGame?.draw(); }
     function end(msg){ running=false; start.classList.remove("hidden"); hud.classList.add("hidden"); backBtn.classList.add("hidden"); document.getElementById("startBtn").textContent="Play Again"; statusEl.textContent=msg; }
     showMenu();
   </script>
